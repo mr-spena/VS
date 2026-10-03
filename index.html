@@ -98,6 +98,13 @@ tfoot tr:last-child{background:#eaf3ff}
 tfoot td,tfoot tr:first-child td,tfoot tr:last-child td{display:block;padding:0;border:0;background:none}
 tfoot td:last-child{display:none}
 }
+.sum{grid-template-columns:repeat(4,1fr)}
+.sum div:nth-child(3){background:linear-gradient(135deg,#2a85ee,#3fa0ff)}
+.sum div:nth-child(4){background:linear-gradient(135deg,#17a99a,#36c4b3)}
+.sum div:nth-child(3),.sum div:nth-child(4){color:#fff}
+.sum div:nth-child(3) small,.sum div:nth-child(4) small{color:#e3f0ff}
+@media(max-width:620px){.sum{grid-template-columns:1fr 1fr}.sum div:last-child{grid-column:auto}}
+@media print{.sum div:nth-child(n+3){background:#fff;color:var(--ink)}.sum div:nth-child(n+3) small{color:var(--mut)}}
 </style>
 </head>
 <body class="lo">
@@ -138,6 +145,8 @@ tfoot td:last-child{display:none}
       <div><label for="kat">Kategori</label><select id="kat"></select></div>
       <div><label for="nom">Nominal (Rp)</label><input id="nom" type="number" inputmode="numeric" min="0"></div>
     </div>
+    <label id="lDom" for="dom">Dibayar dari</label>
+    <select id="dom"><option value="Tunai">Uang Tunai</option><option value="Tabungan">Uang Tabungan</option></select>
     <label for="cat">Catatan (opsional)</label><input id="cat" autocapitalize="words">
     <div class="btns"><button id="btnSave">Simpan transaksi</button><button id="btnCancel" class="alt hide">Batal</button></div>
     <div class="msg" id="saveMsg"></div>
@@ -162,7 +171,8 @@ tfoot td:last-child{display:none}
     <div class="sum">
       <div><small>Pemasukan</small><b class="in" id="sIn">0</b></div>
       <div><small>Pengeluaran</small><b class="out" id="sOut">0</b></div>
-      <div><small>Saldo</small><b id="sSal">0</b></div>
+      <div><small>Saldo Uang Tunai</small><b id="sTun">0</b></div>
+      <div><small>Saldo Uang Tabungan</small><b id="sTab">0</b></div>
     </div>
     <div class="charts card">
       <div><canvas id="cKat"></canvas></div>
@@ -170,7 +180,7 @@ tfoot td:last-child{display:none}
     </div>
     <div class="card tw">
       <table>
-        <thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Catatan</th><th class="n">Nominal</th><th class="noprint"></th></tr></thead>
+        <thead><tr><th>Tanggal</th><th>Jenis · Dompet</th><th>Kategori</th><th>Catatan</th><th class="n">Nominal</th><th class="noprint"></th></tr></thead>
         <tbody id="tb"></tbody><tfoot id="tf"></tfoot>
       </table>
       <div class="msg" id="empty"></div>
@@ -232,7 +242,8 @@ function tab(t) {
 $('tInput').onclick = () => tab('in'); $('tLap').onclick = () => tab('lap');
 
 /* Input */
-function fillKat() { $('kat').innerHTML = KAT[$('jenis').value].map(k => '<option>' + k + '</option>').join(''); }
+function updDom() { $('lDom').textContent = $('jenis').value === 'Pengeluaran' ? 'Dibayar dari' : 'Masuk ke'; }
+function fillKat() { $('kat').innerHTML = KAT[$('jenis').value].map(k => '<option>' + k + '</option>').join(''); updDom(); }
 $('jenis').onchange = fillKat;
 let editId = null;
 function cap(el) {
@@ -249,7 +260,7 @@ function endEdit() {
 function startEdit(id) {
   const x = DATA.find(v => v.id === id); if (!x) return;
   editId = id; $('jenis').value = x.jenis; fillKat(); $('kat').value = x.kategori;
-  $('tgl').value = x.tanggal; $('nom').value = x.nominal; $('cat').value = x.catatan || '';
+  $('tgl').value = x.tanggal; $('dom').value = x.dompet || 'Tunai'; $('nom').value = x.nominal; $('cat').value = x.catatan || '';
   $('btnSave').textContent = 'Simpan perubahan'; $('hInput').textContent = 'Ubah transaksi';
   $('btnCancel').classList.remove('hide'); $('saveMsg').textContent = ''; tab('in');
 }
@@ -259,7 +270,7 @@ $('btnSave').onclick = async () => {
   if (!nominal || nominal <= 0) { $('saveMsg').textContent = 'Isi nominal lebih dari 0.'; $('saveMsg').className = 'msg out'; return; }
   $('saveMsg').className = 'msg'; $('saveMsg').textContent = 'Menyimpan...';
   try {
-    const r = await call({ action: editId ? 'edit' : 'add', id: editId, tanggal: $('tgl').value, jenis: $('jenis').value, kategori: $('kat').value, nominal, catatan: $('cat').value });
+    const r = await call({ action: editId ? 'edit' : 'add', id: editId, tanggal: $('tgl').value, jenis: $('jenis').value, kategori: $('kat').value, nominal, catatan: $('cat').value, dompet: $('dom').value });
     if (!r.ok) throw new Error(r.error);
     $('saveMsg').textContent = 'Tersimpan: ' + $('jenis').value + ' ' + rp(nominal); $('saveMsg').className = 'msg in';
     $('nom').value = ''; $('cat').value = '';
@@ -301,8 +312,9 @@ function render() {
   cur = DATA.filter(x => x.tanggal >= R.a && x.tanggal <= R.b).sort((x, y) => x.tanggal < y.tanggal ? -1 : 1);
   const sum = j => cur.filter(x => x.jenis === j).reduce((s, x) => s + x.nominal, 0);
   const i = sum('Pemasukan'), o = sum('Pengeluaran');
-  $('sIn').textContent = rp(i); $('sOut').textContent = rp(o); $('sSal').textContent = rp(i - o);
-  $('tb').innerHTML = cur.map(x => '<tr><td>' + x.tanggal + '</td><td class="' + (x.jenis === 'Pemasukan' ? 'in' : 'out') + '">' + x.jenis + '</td><td>' + esc(x.kategori) + '</td><td>' + esc(x.catatan) + '</td><td class="n">' + rp(x.nominal) + '</td><td class="noprint"><button class="x e" data-id="' + x.id + '">Edit</button><button class="x d" data-id="' + x.id + '">Hapus</button></td></tr>').join('');
+  $('sIn').textContent = rp(i); $('sOut').textContent = rp(o); const bal = d => DATA.filter(x => x.dompet === d).reduce((t, x) => t + (x.jenis === 'Pemasukan' ? x.nominal : -x.nominal), 0);
+  $('sTun').textContent = rp(bal('Tunai')); $('sTab').textContent = rp(bal('Tabungan'));
+  $('tb').innerHTML = cur.map(x => '<tr><td>' + x.tanggal + '</td><td class="' + (x.jenis === 'Pemasukan' ? 'in' : 'out') + '">' + x.jenis + ' · ' + esc(x.dompet) + '</td><td>' + esc(x.kategori) + '</td><td>' + esc(x.catatan) + '</td><td class="n">' + rp(x.nominal) + '</td><td class="noprint"><button class="x e" data-id="' + x.id + '">Edit</button><button class="x d" data-id="' + x.id + '">Hapus</button></td></tr>').join('');
   $('tf').innerHTML = cur.length ? ['Total pemasukan|'+rp(i)+'|in','Total pengeluaran|'+rp(o)+'|out','Saldo periode|'+rp(i-o)+'|'].map(t=>{t=t.split('|');return '<tr><td colspan="4">'+t[0]+'</td><td class="n '+t[2]+'">'+t[1]+'</td><td class="noprint"></td></tr>'}).join('') : '';
   $('empty').textContent = cur.length ? '' : 'Belum ada transaksi pada periode ini. Catat dulu di menu Input.';
   document.querySelectorAll('button.x.e').forEach(b => b.onclick = () => startEdit(b.dataset.id));
@@ -333,7 +345,7 @@ $('per').onchange = render; $('ref').onchange = render;
 $('btnCsv').onclick = () => {
   if (!cur.length) { alert('Tidak ada data pada periode ini.'); return; }
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = [['Tanggal', 'Jenis', 'Kategori', 'Catatan', 'Nominal']].concat(cur.map(x => [x.tanggal, x.jenis, x.kategori, x.catatan, x.nominal]));
+  const rows = [['Tanggal', 'Jenis', 'Kategori', 'Catatan', 'Nominal', 'Dompet']].concat(cur.map(x => [x.tanggal, x.jenis, x.kategori, x.catatan, x.nominal, x.dompet]));
   const blob = new Blob(['\ufeff' + rows.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'laporan-keuangan-' + range().a + '.csv'; a.click();
