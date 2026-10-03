@@ -133,11 +133,12 @@ tfoot tr:last-child td{background:#eaf3ff}
         <div><label for="ref">Tanggal acuan</label><input id="ref" type="date"></div>
       </div>
       <div class="btns">
+        <button id="btnRef" class="alt">Muat ulang</button>
         <button id="btnCsv" class="alt">Ekspor Excel (CSV)</button>
         <button id="btnPrint" class="alt">Cetak / Simpan PDF</button>
       </div>
     </div>
-    <h2 id="judul"></h2>
+    <h2 id="judul"></h2><div class="msg" id="upd" style="margin:-6px 2px 10px;color:var(--mut)"></div>
     <div class="sum">
       <div><small>Pemasukan</small><b class="in" id="sIn">0</b></div>
       <div><small>Pengeluaran</small><b class="out" id="sOut">0</b></div>
@@ -206,7 +207,7 @@ try { const s = sessionStorage.getItem('cred'); if (s) { cred = JSON.parse(s); s
 function tab(t) {
   $('pInput').classList.toggle('hide', t !== 'in'); $('pLap').classList.toggle('hide', t !== 'lap');
   $('tInput').classList.toggle('on', t === 'in'); $('tLap').classList.toggle('on', t === 'lap');
-  if (t === 'lap') load();
+  if (t === 'lap') { if (DATA.length) render(); load(DATA.length > 0); }
 }
 $('tInput').onclick = () => tab('in'); $('tLap').onclick = () => tab('lap');
 
@@ -222,15 +223,26 @@ $('btnSave').onclick = async () => {
     if (!r.ok) throw new Error(r.error);
     $('saveMsg').textContent = 'Tersimpan: ' + $('jenis').value + ' ' + rp(nominal); $('saveMsg').className = 'msg in';
     $('nom').value = ''; $('cat').value = '';
+    $('ref').value = $('tgl').value; load(true);
   } catch (e) { $('saveMsg').textContent = 'Gagal menyimpan: ' + e.message; $('saveMsg').className = 'msg out'; }
 };
 
 /* Laporan */
-async function load() {
-  $('empty').textContent = 'Memuat data...';
-  try { const r = await call({ action: 'list' }); if (!r.ok) throw new Error(r.error); DATA = r.data; render(); }
-  catch (e) { $('empty').textContent = 'Gagal memuat: ' + e.message; }
+let seq = 0;
+async function load(silent) {
+  const my = ++seq;
+  if (!silent) $('empty').textContent = 'Memuat data...';
+  try {
+    const r = await call({ action: 'list' });
+    if (!r.ok) throw new Error(r.error);
+    if (my !== seq) return;
+    DATA = r.data; render();
+    $('upd').textContent = 'Diperbarui ' + new Date().toLocaleTimeString('id-ID');
+  } catch (e) { if (!silent && my === seq) $('empty').textContent = 'Gagal memuat: ' + e.message; }
 }
+const lapOpen = () => cred && !$('pLap').classList.contains('hide') && !document.hidden;
+setInterval(() => { if (lapOpen()) load(true); }, 15000);
+document.addEventListener('visibilitychange', () => { if (lapOpen()) load(true); });
 function range() {
   const d = new Date($('ref').value + 'T00:00:00'), p = $('per').value;
   let a, b, t;
@@ -272,6 +284,7 @@ function draw(R) {
     data: { labels: ks, datasets: [{ label: 'Pemasukan', data: ks.map(k => grp[k].i), backgroundColor: '#12a672' }, { label: 'Pengeluaran', data: ks.map(k => grp[k].o), backgroundColor: '#e5484d' }] },
     options: { plugins: { title: { display: true, text: yr ? 'Per bulan' : 'Per hari' }, legend: { position: 'bottom' } } } });
 }
+$('btnRef').onclick = () => load();
 $('per').onchange = render; $('ref').onchange = render;
 
 /* Ekspor */
