@@ -159,7 +159,7 @@ tfoot td:last-child{display:none}
       <div class="row">
         <div><label for="per">Periode</label>
           <select id="per"><option value="day">Harian</option><option value="week">Mingguan</option>
-          <option value="month" selected>Bulanan</option><option value="year">Tahunan</option></select></div>
+          <option value="month" selected>Bulanan</option><option value="year">Tahunan</option><option value="all">Semua</option></select></div>
         <div><label for="ref">Tanggal acuan</label><input id="ref" type="date"></div>
       </div>
       <div class="btns">
@@ -310,6 +310,7 @@ function range() {
     t = 'Minggu ' + a.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' - ' + b.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   }
   else if (p === 'month') { a = new Date(d.getFullYear(), d.getMonth(), 1); b = new Date(d.getFullYear(), d.getMonth() + 1, 0); t = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }); }
+  else if (p === 'all') { a = new Date(2000, 0, 1); b = new Date(2100, 11, 31); t = 'Semua transaksi'; }
   else { a = new Date(d.getFullYear(), 0, 1); b = new Date(d.getFullYear(), 11, 31); t = 'Tahun ' + d.getFullYear(); }
   return { a: ymd(a), b: ymd(b), t, p };
 }
@@ -342,7 +343,7 @@ function draw(R) {
   charts.k = new Chart($('cKat'), { type: 'doughnut',
     data: { labels: Object.keys(kat), datasets: [{ data: Object.values(kat), backgroundColor: ['#2f8cf5', '#1fb5a6', '#f5a623', '#7b61ff', '#ef5b5b', '#38c172', '#14304f', '#9aa7b8'] }] },
     options: { plugins: { title: { display: true, text: 'Pengeluaran per kategori' }, legend: { position: 'bottom' } } } });
-  const grp = {}, yr = R.p === 'year';
+  const grp = {}, yr = R.p === 'year' || R.p === 'all';
   cur.forEach(x => { if (x.jenis === 'Pindah Dana') return; const k = yr ? x.tanggal.slice(0, 7) : x.tanggal; (grp[k] = grp[k] || { i: 0, o: 0 })[x.jenis === 'Pemasukan' ? 'i' : 'o'] += x.nominal; });
   const ks = Object.keys(grp).sort();
   charts.b = new Chart($('cBar'), { type: 'bar',
