@@ -105,6 +105,7 @@ tfoot td:last-child{display:none}
 .sum div:nth-child(3) small,.sum div:nth-child(4) small{color:#e3f0ff}
 @media(max-width:620px){.sum{grid-template-columns:1fr 1fr}.sum div:last-child{grid-column:auto}}
 @media print{.sum div:nth-child(n+3){background:#fff;color:var(--ink)}.sum div:nth-child(n+3) small{color:var(--mut)}}
+.tf{color:var(--blue)}
 </style>
 </head>
 <body class="lo">
@@ -138,7 +139,7 @@ tfoot td:last-child{display:none}
     <h2 id="hInput">Catat transaksi</h2>
     <div class="row">
       <div><label for="jenis">Jenis</label>
-        <select id="jenis"><option>Pengeluaran</option><option>Pemasukan</option></select></div>
+        <select id="jenis"><option>Pengeluaran</option><option>Pemasukan</option><option>Pindah Dana</option></select></div>
       <div><label for="tgl">Tanggal</label><input id="tgl" type="date"></div>
     </div>
     <div class="row">
@@ -195,7 +196,8 @@ const API = 'https://script.google.com/macros/s/AKfycbyGPm26t79dtWusrM1SYOb_6F9V
 
 const KAT = {
   Pengeluaran: ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya'],
-  Pemasukan: ['Gaji', 'Bonus', 'Usaha', 'Lainnya']
+  Pemasukan: ['Gaji', 'Bonus', 'Usaha', 'Lainnya'],
+  'Pindah Dana': ['Tarik Tunai', 'Setor Tabungan']
 };
 const $ = id => document.getElementById(id);
 const rp = n => 'Rp ' + Number(n).toLocaleString('id-ID');
@@ -242,7 +244,11 @@ function tab(t) {
 $('tInput').onclick = () => tab('in'); $('tLap').onclick = () => tab('lap');
 
 /* Input */
-function updDom() { $('lDom').textContent = $('jenis').value === 'Pengeluaran' ? 'Dibayar dari' : 'Masuk ke'; }
+function updDom() {
+  const j = $('jenis').value, tr = j === 'Pindah Dana';
+  $('lDom').textContent = j === 'Pengeluaran' ? 'Dibayar dari' : 'Masuk ke';
+  $('lDom').classList.toggle('hide', tr); $('dom').classList.toggle('hide', tr);
+}
 function fillKat() { $('kat').innerHTML = KAT[$('jenis').value].map(k => '<option>' + k + '</option>').join(''); updDom(); }
 $('jenis').onchange = fillKat;
 let editId = null;
@@ -270,7 +276,7 @@ $('btnSave').onclick = async () => {
   if (!nominal || nominal <= 0) { $('saveMsg').textContent = 'Isi nominal lebih dari 0.'; $('saveMsg').className = 'msg out'; return; }
   $('saveMsg').className = 'msg'; $('saveMsg').textContent = 'Menyimpan...';
   try {
-    const r = await call({ action: editId ? 'edit' : 'add', id: editId, tanggal: $('tgl').value, jenis: $('jenis').value, kategori: $('kat').value, nominal, catatan: $('cat').value, dompet: $('dom').value });
+    const r = await call({ action: editId ? 'edit' : 'add', id: editId, tanggal: $('tgl').value, jenis: $('jenis').value, kategori: $('kat').value, nominal, catatan: $('cat').value, dompet: $('jenis').value === 'Pindah Dana' ? ($('kat').value === 'Tarik Tunai' ? 'Tabungan' : 'Tunai') : $('dom').value });
     if (!r.ok) throw new Error(r.error);
     $('saveMsg').textContent = 'Tersimpan: ' + $('jenis').value + ' ' + rp(nominal); $('saveMsg').className = 'msg in';
     $('nom').value = ''; $('cat').value = '';
@@ -312,9 +318,12 @@ function render() {
   cur = DATA.filter(x => x.tanggal >= R.a && x.tanggal <= R.b).sort((x, y) => x.tanggal < y.tanggal ? -1 : 1);
   const sum = j => cur.filter(x => x.jenis === j).reduce((s, x) => s + x.nominal, 0);
   const i = sum('Pemasukan'), o = sum('Pengeluaran');
-  $('sIn').textContent = rp(i); $('sOut').textContent = rp(o); const bal = d => DATA.filter(x => x.dompet === d).reduce((t, x) => t + (x.jenis === 'Pemasukan' ? x.nominal : -x.nominal), 0);
+  $('sIn').textContent = rp(i); $('sOut').textContent = rp(o); const bal = d => DATA.reduce((t, x) => {
+    if (x.jenis === 'Pindah Dana') return t + (x.dompet === d ? -x.nominal : x.nominal);
+    return x.dompet === d ? t + (x.jenis === 'Pemasukan' ? x.nominal : -x.nominal) : t;
+  }, 0);
   $('sTun').textContent = rp(bal('Tunai')); $('sTab').textContent = rp(bal('Tabungan'));
-  $('tb').innerHTML = cur.map(x => '<tr><td>' + x.tanggal + '</td><td class="' + (x.jenis === 'Pemasukan' ? 'in' : 'out') + '">' + x.jenis + ' · ' + esc(x.dompet) + '</td><td>' + esc(x.kategori) + '</td><td>' + esc(x.catatan) + '</td><td class="n">' + rp(x.nominal) + '</td><td class="noprint"><button class="x e" data-id="' + x.id + '">Edit</button><button class="x d" data-id="' + x.id + '">Hapus</button></td></tr>').join('');
+  $('tb').innerHTML = cur.map(x => '<tr><td>' + x.tanggal + '</td><td class="' + jc(x) + '">' + jl(x) + '</td><td>' + esc(x.kategori) + '</td><td>' + esc(x.catatan) + '</td><td class="n">' + rp(x.nominal) + '</td><td class="noprint"><button class="x e" data-id="' + x.id + '">Edit</button><button class="x d" data-id="' + x.id + '">Hapus</button></td></tr>').join('');
   $('tf').innerHTML = cur.length ? ['Total pemasukan|'+rp(i)+'|in','Total pengeluaran|'+rp(o)+'|out','Saldo periode|'+rp(i-o)+'|'].map(t=>{t=t.split('|');return '<tr><td colspan="4">'+t[0]+'</td><td class="n '+t[2]+'">'+t[1]+'</td><td class="noprint"></td></tr>'}).join('') : '';
   $('empty').textContent = cur.length ? '' : 'Belum ada transaksi pada periode ini. Catat dulu di menu Input.';
   document.querySelectorAll('button.x.e').forEach(b => b.onclick = () => startEdit(b.dataset.id));
@@ -324,6 +333,8 @@ function render() {
   });
   draw(R);
 }
+function jl(x) { return x.jenis === 'Pindah Dana' ? esc(x.dompet) + ' → ' + (x.dompet === 'Tunai' ? 'Tabungan' : 'Tunai') : x.jenis + ' · ' + esc(x.dompet); }
+function jc(x) { return x.jenis === 'Pemasukan' ? 'in' : x.jenis === 'Pengeluaran' ? 'out' : 'tf'; }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function draw(R) {
   Object.values(charts).forEach(c => c.destroy());
@@ -332,7 +343,7 @@ function draw(R) {
     data: { labels: Object.keys(kat), datasets: [{ data: Object.values(kat), backgroundColor: ['#2f8cf5', '#1fb5a6', '#f5a623', '#7b61ff', '#ef5b5b', '#38c172', '#14304f', '#9aa7b8'] }] },
     options: { plugins: { title: { display: true, text: 'Pengeluaran per kategori' }, legend: { position: 'bottom' } } } });
   const grp = {}, yr = R.p === 'year';
-  cur.forEach(x => { const k = yr ? x.tanggal.slice(0, 7) : x.tanggal; (grp[k] = grp[k] || { i: 0, o: 0 })[x.jenis === 'Pemasukan' ? 'i' : 'o'] += x.nominal; });
+  cur.forEach(x => { if (x.jenis === 'Pindah Dana') return; const k = yr ? x.tanggal.slice(0, 7) : x.tanggal; (grp[k] = grp[k] || { i: 0, o: 0 })[x.jenis === 'Pemasukan' ? 'i' : 'o'] += x.nominal; });
   const ks = Object.keys(grp).sort();
   charts.b = new Chart($('cBar'), { type: 'bar',
     data: { labels: ks, datasets: [{ label: 'Pemasukan', data: ks.map(k => grp[k].i), backgroundColor: '#12a672' }, { label: 'Pengeluaran', data: ks.map(k => grp[k].o), backgroundColor: '#e5484d' }] },
