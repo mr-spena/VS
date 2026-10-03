@@ -28,7 +28,7 @@ button.x:hover{background:none;text-decoration:underline}
 .logo{width:44px;height:44px;flex:none;--lf:#2f8cf5;--lt:#fff}
 .lg,.brand{display:flex;align-items:center;gap:12px}
 #login{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
-.tagline{color:#fff;text-align:center;padding:52px 30px 38px;font-size:15px;line-height:1.65;margin:0}
+.tagline{height:96px;flex:none}
 .sheet{flex:1;background:#fff;border-radius:34px 34px 0 0;padding:36px 28px 28px}
 .lg{justify-content:center;margin-bottom:26px}
 .lg h1{color:#14304f;font-size:21px}
@@ -43,7 +43,7 @@ button.x:hover{background:none;text-decoration:underline}
 .big{width:100%;padding:15px;font-size:16px;border-radius:10px;background:linear-gradient(90deg,#2a85ee,#3a9bff);box-shadow:0 6px 16px rgba(47,140,245,.32)}
 .big:hover{background:linear-gradient(90deg,#2379dc,#318fee)}
 .foot{text-align:center;color:var(--mut);font-size:13px;margin:22px 0 0}
-@media(min-width:600px){#login{min-height:auto;margin:48px auto}.sheet{border-radius:28px;flex:none}}
+@media(min-width:600px){#login{min-height:auto;margin:48px auto}.sheet{border-radius:28px;flex:none}.tagline{display:none}}
 .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:linear-gradient(135deg,#2a85ee,#3fa0ff);color:#fff;padding:16px 18px;border-radius:18px;margin-bottom:14px;box-shadow:0 8px 20px rgba(47,140,245,.25)}
 .bar .logo{--lf:#fff;--lt:#2f8cf5}
 .bar .tag{font-size:12.5px;color:#e3f0ff}
@@ -78,6 +78,26 @@ tfoot tr:last-child td{background:#eaf3ff}
 .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 @media(max-width:620px){.charts,.row{grid-template-columns:1fr}.sum{grid-template-columns:1fr 1fr}.sum div:last-child{grid-column:1/-1}.sum b{font-size:16px}}
 @media print{.noprint{display:none!important}body{background:#fff}.card,.sum div{box-shadow:none;border:1px solid #ccc}.sum div:last-child{background:#fff;color:var(--ink)}.sum div:last-child small{color:var(--mut)}}
+button.x{padding:4px 8px;font-size:13px}
+button.x.e{color:var(--blue)}
+@media(max-width:620px){
+table{min-width:0}
+thead{display:none}
+table,tbody,tfoot{display:block}
+tbody tr{display:grid;grid-template-columns:1fr auto;column-gap:10px;row-gap:2px;padding:11px 14px;border-bottom:1px solid #eef2f7}
+tbody td{display:block;padding:0;border:0}
+tbody td:nth-child(3){grid-column:1;grid-row:1;font-weight:600}
+tbody td:nth-child(5){grid-column:2;grid-row:1;font-weight:600}
+tbody td:nth-child(1){grid-column:1;grid-row:2;color:var(--mut);font-size:12.5px}
+tbody td:nth-child(2){grid-column:2;grid-row:2;font-size:12.5px;text-align:right}
+tbody td:nth-child(4){grid-column:1;grid-row:3;color:var(--mut);font-size:13px;overflow-wrap:anywhere;align-self:center}
+tbody td:nth-child(6){grid-column:2;grid-row:3;text-align:right;white-space:nowrap;margin-right:-8px}
+tfoot tr{display:flex;justify-content:space-between;padding:10px 14px}
+tfoot tr:first-child{border-top:2px solid var(--line)}
+tfoot tr:last-child{background:#eaf3ff}
+tfoot td,tfoot tr:first-child td,tfoot tr:last-child td{display:block;padding:0;border:0;background:none}
+tfoot td:last-child{display:none}
+}
 </style>
 </head>
 <body class="lo">
@@ -86,7 +106,7 @@ tfoot tr:last-child td{background:#eaf3ff}
 
 <!-- LOGIN -->
 <div id="login">
-  <p class="tagline">Aplikasi pencatat keuangan pribadi yang mudah dipakai. Catat pemasukan dan pengeluaran harian, lalu lihat laporannya kapan saja di perangkat apa saja.</p>
+  <div class="tagline"></div>
   <div class="sheet">
     <div class="lg"><svg class="logo" viewBox="0 0 48 48" role="img" aria-label="Logo VS"><use href="#vs"/></svg><h1>Laporan Keuangan VS</h1></div>
     <h2 class="wel">Selamat datang kembali,</h2>
@@ -101,14 +121,14 @@ tfoot tr:last-child td{background:#eaf3ff}
 
 <!-- APLIKASI -->
 <div id="app" class="hide">
-  <div class="bar noprint"><div class="brand"><svg class="logo" viewBox="0 0 48 48" role="img" aria-label="Logo VS"><use href="#vs"/></svg><div><h1>Laporan Keuangan VS</h1><div class="tag">Pemasukan, pengeluaran, dan laporan pribadi</div></div></div><button class="alt" id="btnOut">Keluar</button></div>
+  <div class="bar noprint"><div class="brand"><svg class="logo" viewBox="0 0 48 48" role="img" aria-label="Logo VS"><use href="#vs"/></svg><div><h1>Laporan Keuangan VS</h1></div></div><button class="alt" id="btnOut">Keluar</button></div>
   <div class="tabs noprint">
     <button id="tInput" class="on">Input</button>
     <button id="tLap">Laporan</button>
   </div>
 
   <div id="pInput" class="card noprint">
-    <h2>Catat transaksi</h2>
+    <h2 id="hInput">Catat transaksi</h2>
     <div class="row">
       <div><label for="jenis">Jenis</label>
         <select id="jenis"><option>Pengeluaran</option><option>Pemasukan</option></select></div>
@@ -118,8 +138,8 @@ tfoot tr:last-child td{background:#eaf3ff}
       <div><label for="kat">Kategori</label><select id="kat"></select></div>
       <div><label for="nom">Nominal (Rp)</label><input id="nom" type="number" inputmode="numeric" min="0"></div>
     </div>
-    <label for="cat">Catatan (opsional)</label><input id="cat">
-    <div class="btns"><button id="btnSave">Simpan transaksi</button></div>
+    <label for="cat">Catatan (opsional)</label><input id="cat" autocapitalize="words">
+    <div class="btns"><button id="btnSave">Simpan transaksi</button><button id="btnCancel" class="alt hide">Batal</button></div>
     <div class="msg" id="saveMsg"></div>
   </div>
 
@@ -214,16 +234,37 @@ $('tInput').onclick = () => tab('in'); $('tLap').onclick = () => tab('lap');
 /* Input */
 function fillKat() { $('kat').innerHTML = KAT[$('jenis').value].map(k => '<option>' + k + '</option>').join(''); }
 $('jenis').onchange = fillKat;
+let editId = null;
+function cap(el) {
+  const p = el.selectionStart, v = el.value.replace(/(^|[\s\-\/])(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase());
+  if (v !== el.value) { el.value = v; try { el.setSelectionRange(p, p); } catch (_) {} }
+}
+$('cat').addEventListener('input', e => { if (!e.isComposing) cap(e.target); });
+$('cat').addEventListener('compositionend', e => cap(e.target));
+$('cat').addEventListener('blur', e => cap(e.target));
+function endEdit() {
+  editId = null; $('btnSave').textContent = 'Simpan transaksi'; $('hInput').textContent = 'Catat transaksi';
+  $('btnCancel').classList.add('hide'); $('nom').value = ''; $('cat').value = '';
+}
+function startEdit(id) {
+  const x = DATA.find(v => v.id === id); if (!x) return;
+  editId = id; $('jenis').value = x.jenis; fillKat(); $('kat').value = x.kategori;
+  $('tgl').value = x.tanggal; $('nom').value = x.nominal; $('cat').value = x.catatan || '';
+  $('btnSave').textContent = 'Simpan perubahan'; $('hInput').textContent = 'Ubah transaksi';
+  $('btnCancel').classList.remove('hide'); $('saveMsg').textContent = ''; tab('in');
+}
+$('btnCancel').onclick = () => { endEdit(); tab('lap'); };
 $('btnSave').onclick = async () => {
   const nominal = Number($('nom').value);
   if (!nominal || nominal <= 0) { $('saveMsg').textContent = 'Isi nominal lebih dari 0.'; $('saveMsg').className = 'msg out'; return; }
   $('saveMsg').className = 'msg'; $('saveMsg').textContent = 'Menyimpan...';
   try {
-    const r = await call({ action: 'add', tanggal: $('tgl').value, jenis: $('jenis').value, kategori: $('kat').value, nominal, catatan: $('cat').value });
+    const r = await call({ action: editId ? 'edit' : 'add', id: editId, tanggal: $('tgl').value, jenis: $('jenis').value, kategori: $('kat').value, nominal, catatan: $('cat').value });
     if (!r.ok) throw new Error(r.error);
     $('saveMsg').textContent = 'Tersimpan: ' + $('jenis').value + ' ' + rp(nominal); $('saveMsg').className = 'msg in';
     $('nom').value = ''; $('cat').value = '';
     $('ref').value = $('tgl').value; load(true);
+    if (editId) { endEdit(); $('saveMsg').textContent = ''; tab('lap'); }
   } catch (e) { $('saveMsg').textContent = 'Gagal menyimpan: ' + e.message; $('saveMsg').className = 'msg out'; }
 };
 
@@ -261,10 +302,11 @@ function render() {
   const sum = j => cur.filter(x => x.jenis === j).reduce((s, x) => s + x.nominal, 0);
   const i = sum('Pemasukan'), o = sum('Pengeluaran');
   $('sIn').textContent = rp(i); $('sOut').textContent = rp(o); $('sSal').textContent = rp(i - o);
-  $('tb').innerHTML = cur.map(x => '<tr><td>' + x.tanggal + '</td><td class="' + (x.jenis === 'Pemasukan' ? 'in' : 'out') + '">' + x.jenis + '</td><td>' + esc(x.kategori) + '</td><td>' + esc(x.catatan) + '</td><td class="n">' + rp(x.nominal) + '</td><td class="noprint"><button class="x" data-id="' + x.id + '" aria-label="Hapus">Hapus</button></td></tr>').join('');
+  $('tb').innerHTML = cur.map(x => '<tr><td>' + x.tanggal + '</td><td class="' + (x.jenis === 'Pemasukan' ? 'in' : 'out') + '">' + x.jenis + '</td><td>' + esc(x.kategori) + '</td><td>' + esc(x.catatan) + '</td><td class="n">' + rp(x.nominal) + '</td><td class="noprint"><button class="x e" data-id="' + x.id + '">Edit</button><button class="x d" data-id="' + x.id + '">Hapus</button></td></tr>').join('');
   $('tf').innerHTML = cur.length ? ['Total pemasukan|'+rp(i)+'|in','Total pengeluaran|'+rp(o)+'|out','Saldo periode|'+rp(i-o)+'|'].map(t=>{t=t.split('|');return '<tr><td colspan="4">'+t[0]+'</td><td class="n '+t[2]+'">'+t[1]+'</td><td class="noprint"></td></tr>'}).join('') : '';
   $('empty').textContent = cur.length ? '' : 'Belum ada transaksi pada periode ini. Catat dulu di menu Input.';
-  document.querySelectorAll('button.x').forEach(b => b.onclick = async () => {
+  document.querySelectorAll('button.x.e').forEach(b => b.onclick = () => startEdit(b.dataset.id));
+  document.querySelectorAll('button.x.d').forEach(b => b.onclick = async () => {
     if (!confirm('Hapus transaksi ini?')) return;
     await call({ action: 'del', id: b.dataset.id }); load();
   });
