@@ -106,6 +106,9 @@ tfoot td:last-child{display:none}
 @media(max-width:620px){.sum{grid-template-columns:1fr 1fr}.sum div:last-child{grid-column:auto}}
 @media print{.sum div:nth-child(n+3){background:#fff;color:var(--ink)}.sum div:nth-child(n+3) small{color:var(--mut)}}
 .tf{color:var(--blue)}
+.urow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #eef2f7}
+.urow small{color:var(--mut)}
+button.ue{color:var(--blue)}
 </style>
 </head>
 <body class="lo">
@@ -133,6 +136,7 @@ tfoot td:last-child{display:none}
   <div class="tabs noprint">
     <button id="tInput" class="on">Input</button>
     <button id="tLap">Laporan</button>
+    <button id="tSet">Pengaturan</button>
   </div>
 
   <div id="pInput" class="card noprint">
@@ -144,13 +148,33 @@ tfoot td:last-child{display:none}
     </div>
     <div class="row">
       <div><label for="kat">Kategori</label><select id="kat"></select></div>
-      <div><label for="nom">Nominal (Rp)</label><input id="nom" type="number" inputmode="numeric" min="0"></div>
+      <div><label for="nom">Nominal</label><input id="nom" type="text" inputmode="numeric" autocomplete="off" placeholder="Rp 0,-"></div>
     </div>
     <label id="lDom" for="dom">Dibayar dari</label>
     <select id="dom"><option value="Tunai">Uang Tunai</option><option value="Tabungan">Uang Tabungan</option></select>
     <label for="cat">Catatan (opsional)</label><input id="cat" autocapitalize="words">
     <div class="btns"><button id="btnSave">Simpan transaksi</button><button id="btnCancel" class="alt hide">Batal</button></div>
     <div class="msg" id="saveMsg"></div>
+  </div>
+
+  <div id="pSet" class="hide noprint">
+    <div class="card">
+      <h2>Akun saya</h2>
+      <div class="msg" id="whoami" style="margin:0 0 6px;color:var(--mut)"></div>
+      <label for="nu">Username baru</label><input id="nu" autocapitalize="none" autocomplete="off" placeholder="Kosongkan jika tidak diubah">
+      <label for="np">Password baru</label><input id="np" type="password" autocomplete="new-password" placeholder="Kosongkan jika tidak diubah">
+      <div class="btns"><button id="btnMe">Simpan perubahan</button></div>
+      <div class="msg" id="meMsg"></div>
+    </div>
+    <div class="card hide" id="adm">
+      <h2>Kelola pengguna</h2>
+      <div id="ulist"></div>
+      <h2 id="hAdm" style="margin-top:18px">Tambah pengguna</h2>
+      <label for="au">Username</label><input id="au" autocapitalize="none" autocomplete="off">
+      <label for="ap">Password</label><input id="ap" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter">
+      <div class="btns"><button id="btnAdd">Tambah pengguna</button><button id="btnAdmCancel" class="alt hide">Batal</button></div>
+      <div class="msg" id="admMsg"></div>
+    </div>
   </div>
 
   <div id="pLap" class="hide">
@@ -218,6 +242,7 @@ async function login() {
   try {
     const r = await call({ action: 'login' });
     if (!r.ok) { $('loginMsg').textContent = r.error; return; }
+    cred.u = r.username; cred.role = r.role;
     sessionStorage.setItem('cred', JSON.stringify(cred));
     try { $('rem').checked ? localStorage.setItem('vsu', cred.u) : localStorage.removeItem('vsu'); } catch (e) {}
     start();
@@ -239,9 +264,10 @@ try { const s = sessionStorage.getItem('cred'); if (s) { cred = JSON.parse(s); s
 function tab(t) {
   $('pInput').classList.toggle('hide', t !== 'in'); $('pLap').classList.toggle('hide', t !== 'lap');
   $('tInput').classList.toggle('on', t === 'in'); $('tLap').classList.toggle('on', t === 'lap');
+  $('pSet').classList.toggle('hide', t !== 'set'); $('tSet').classList.toggle('on', t === 'set'); if (t === 'set') openSet();
   if (t === 'lap') { if (DATA.length) render(); load(DATA.length > 0); }
 }
-$('tInput').onclick = () => tab('in'); $('tLap').onclick = () => tab('lap');
+$('tInput').onclick = () => tab('in'); $('tLap').onclick = () => tab('lap'); $('tSet').onclick = () => tab('set');
 
 /* Input */
 function updDom() {
@@ -252,6 +278,20 @@ function updDom() {
 function fillKat() { $('kat').innerHTML = KAT[$('jenis').value].map(k => '<option>' + k + '</option>').join(''); updDom(); }
 $('jenis').onchange = fillKat;
 let editId = null;
+const rpIn = n => 'Rp ' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',-';
+const nomVal = () => Number($('nom').value.replace(/\D/g, '')) || 0;
+const setNom = n => { $('nom').value = n ? rpIn(n) : ''; };
+function fmtNom(el) {
+  const raw = el.value, left = raw.slice(0, el.selectionStart).replace(/\D/g, '').length;
+  const digits = raw.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 12);
+  if (!digits) { el.value = ''; return; }
+  const v = rpIn(digits); el.value = v;
+  let c = 0, p = 0;
+  for (; p < v.length && c < left; p++) if (/\d/.test(v[p])) c++;
+  p = Math.max(p, 3);
+  try { el.setSelectionRange(p, p); } catch (_) {}
+}
+$('nom').addEventListener('input', e => fmtNom(e.target));
 function cap(el) {
   const p = el.selectionStart, v = el.value.replace(/(^|[\s\-\/])(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase());
   if (v !== el.value) { el.value = v; try { el.setSelectionRange(p, p); } catch (_) {} }
@@ -266,13 +306,13 @@ function endEdit() {
 function startEdit(id) {
   const x = DATA.find(v => v.id === id); if (!x) return;
   editId = id; $('jenis').value = x.jenis; fillKat(); $('kat').value = x.kategori;
-  $('tgl').value = x.tanggal; $('dom').value = x.dompet || 'Tunai'; $('nom').value = x.nominal; $('cat').value = x.catatan || '';
+  $('tgl').value = x.tanggal; $('dom').value = x.dompet || 'Tunai'; setNom(x.nominal); $('cat').value = x.catatan || '';
   $('btnSave').textContent = 'Simpan perubahan'; $('hInput').textContent = 'Ubah transaksi';
   $('btnCancel').classList.remove('hide'); $('saveMsg').textContent = ''; tab('in');
 }
 $('btnCancel').onclick = () => { endEdit(); tab('lap'); };
 $('btnSave').onclick = async () => {
-  const nominal = Number($('nom').value);
+  const nominal = nomVal();
   if (!nominal || nominal <= 0) { $('saveMsg').textContent = 'Isi nominal lebih dari 0.'; $('saveMsg').className = 'msg out'; return; }
   $('saveMsg').className = 'msg'; $('saveMsg').textContent = 'Menyimpan...';
   try {
@@ -295,7 +335,7 @@ async function load(silent) {
     if (!r.ok) throw new Error(r.error);
     if (my !== seq) return;
     DATA = r.data; render();
-    $('upd').textContent = 'Diperbarui ' + new Date().toLocaleTimeString('id-ID');
+    $('upd').textContent = 'Diperbarui ' + new Date().toLocaleTimeString('id-ID') + ' · Saldo dihitung dari ' + DATA.length + ' transaksi';
   } catch (e) { if (!silent && my === seq) $('empty').textContent = 'Gagal memuat: ' + e.message; }
 }
 const lapOpen = () => cred && !$('pLap').classList.contains('hide') && !document.hidden;
@@ -316,7 +356,7 @@ function range() {
 }
 function render() {
   const R = range(); $('judul').textContent = 'Laporan ' + R.t;
-  cur = DATA.filter(x => x.tanggal >= R.a && x.tanggal <= R.b).sort((x, y) => x.tanggal < y.tanggal ? -1 : 1);
+  cur = DATA.filter(x => R.p === 'all' || (x.tanggal >= R.a && x.tanggal <= R.b)).sort((x, y) => String(x.tanggal) < String(y.tanggal) ? -1 : 1);
   const sum = j => cur.filter(x => x.jenis === j).reduce((s, x) => s + x.nominal, 0);
   const i = sum('Pemasukan'), o = sum('Pengeluaran');
   $('sIn').textContent = rp(i); $('sOut').textContent = rp(o); const bal = d => DATA.reduce((t, x) => {
@@ -352,6 +392,69 @@ function draw(R) {
 }
 $('btnRef').onclick = () => load();
 $('per').onchange = render; $('ref').onchange = render;
+
+/* Pengaturan */
+const setMsg = (id, t, c) => { $(id).textContent = t; $(id).className = 'msg ' + (c || ''); };
+const okName = n => /^[a-z0-9_.]{3,20}$/.test(n);
+const BAD_NAME = 'Username 3-20 karakter: huruf kecil, angka, titik, atau garis bawah.';
+let admTarget = null;
+function applyCred(nu, np) {
+  if (nu) cred.u = nu; if (np) cred.p = np;
+  sessionStorage.setItem('cred', JSON.stringify(cred));
+  try { if (localStorage.getItem('vsu')) localStorage.setItem('vsu', cred.u); } catch (e) {}
+}
+function openSet() {
+  $('whoami').textContent = 'Masuk sebagai ' + cred.u + (cred.role === 'admin' ? ' (Admin)' : '');
+  $('nu').value = ''; $('np').value = ''; setMsg('meMsg', '');
+  $('adm').classList.toggle('hide', cred.role !== 'admin');
+  if (cred.role === 'admin') { endAdm(); loadUsers(); }
+}
+function endAdm() {
+  admTarget = null; $('au').value = ''; $('ap').value = '';
+  $('hAdm').textContent = 'Tambah pengguna'; $('btnAdd').textContent = 'Tambah pengguna';
+  $('ap').placeholder = 'Minimal 6 karakter'; $('btnAdmCancel').classList.add('hide');
+}
+async function loadUsers() {
+  try {
+    const r = await call({ action: 'users' }); if (!r.ok) throw new Error(r.error);
+    $('ulist').innerHTML = r.data.map(u => '<div class="urow"><div><b>' + esc(u.username) + '</b> <small>' + (u.role === 'admin' ? 'Admin' : 'Pengguna') + '</small></div><div><button class="x ue" data-u="' + esc(u.username) + '">Ubah</button>' + (u.role === 'admin' ? '' : '<button class="x ud" data-u="' + esc(u.username) + '">Hapus</button>') + '</div></div>').join('');
+    document.querySelectorAll('button.ue').forEach(b => b.onclick = () => {
+      admTarget = b.dataset.u; $('au').value = admTarget; $('ap').value = '';
+      $('hAdm').textContent = 'Ubah pengguna'; $('btnAdd').textContent = 'Simpan perubahan';
+      $('ap').placeholder = 'Kosongkan jika tidak diubah'; $('btnAdmCancel').classList.remove('hide'); setMsg('admMsg', '');
+    });
+    document.querySelectorAll('button.ud').forEach(b => b.onclick = async () => {
+      if (!confirm('Hapus pengguna "' + b.dataset.u + '" beserta SEMUA datanya? Tindakan ini tidak bisa dibatalkan.')) return;
+      const r = await call({ action: 'user_del', target: b.dataset.u });
+      setMsg('admMsg', r.ok ? 'Pengguna dihapus.' : r.error, r.ok ? 'in' : 'out'); loadUsers();
+    });
+  } catch (e) { setMsg('admMsg', 'Gagal memuat pengguna: ' + e.message, 'out'); }
+}
+$('btnMe').onclick = async () => {
+  const nu = $('nu').value.trim().toLowerCase(), np = $('np').value;
+  if (!nu && !np) return setMsg('meMsg', 'Isi username atau password baru.', 'out');
+  if (nu && !okName(nu)) return setMsg('meMsg', BAD_NAME, 'out');
+  if (np && np.length < 6) return setMsg('meMsg', 'Password minimal 6 karakter.', 'out');
+  setMsg('meMsg', 'Menyimpan...');
+  try {
+    const r = await call({ action: 'user_edit', target: cred.u, newU: nu, newP: np }); if (!r.ok) throw new Error(r.error);
+    applyCred(nu, np); openSet(); setMsg('meMsg', 'Tersimpan.', 'in');
+  } catch (e) { setMsg('meMsg', e.message, 'out'); }
+};
+$('btnAdd').onclick = async () => {
+  const u = $('au').value.trim().toLowerCase(), p = $('ap').value;
+  if (!okName(u)) return setMsg('admMsg', BAD_NAME, 'out');
+  if ((!admTarget || p) && p.length < 6) return setMsg('admMsg', 'Password minimal 6 karakter.', 'out');
+  setMsg('admMsg', 'Menyimpan...');
+  try {
+    const was = admTarget;
+    const r = was ? await call({ action: 'user_edit', target: was, newU: u, newP: p }) : await call({ action: 'user_add', newU: u, newP: p });
+    if (!r.ok) throw new Error(r.error);
+    if (was && was === cred.u) { applyCred(u, p); $('whoami').textContent = 'Masuk sebagai ' + cred.u + ' (Admin)'; }
+    endAdm(); setMsg('admMsg', was ? 'Perubahan tersimpan.' : 'Pengguna ditambahkan.', 'in'); loadUsers();
+  } catch (e) { setMsg('admMsg', e.message, 'out'); }
+};
+$('btnAdmCancel').onclick = () => { endAdm(); setMsg('admMsg', ''); };
 
 /* Ekspor */
 $('btnCsv').onclick = () => {
