@@ -243,7 +243,7 @@ async function login() {
     const r = await call({ action: 'login' });
     if (!r.ok) { $('loginMsg').textContent = r.error; return; }
     cred.u = r.username; cred.role = r.role;
-    sessionStorage.setItem('cred', JSON.stringify(cred));
+    try { localStorage.setItem('cred', JSON.stringify(cred)); } catch (e) {}
     try { $('rem').checked ? localStorage.setItem('vsu', cred.u) : localStorage.removeItem('vsu'); } catch (e) {}
     start();
   } catch (e) { $('loginMsg').textContent = 'Tidak bisa terhubung. Periksa URL API dan pengaturan deploy.'; }
@@ -257,8 +257,19 @@ function start() {
 $('btnLogin').onclick = login;
 try { const v = localStorage.getItem('vsu'); if (v) $('u').value = v; } catch (e) {}
 $('p').onkeydown = e => { if (e.key === 'Enter') login(); };
-$('btnOut').onclick = () => { sessionStorage.removeItem('cred'); location.reload(); };
-try { const s = sessionStorage.getItem('cred'); if (s) { cred = JSON.parse(s); start(); } } catch (e) {}
+$('btnOut').onclick = () => { try { localStorage.removeItem('cred'); sessionStorage.removeItem('cred'); } catch (e) {} location.reload(); };
+try {
+  const s = localStorage.getItem('cred');
+  if (s) {
+    cred = JSON.parse(s); start();
+    // Cek diam-diam: jika password sudah diganti dari perangkat lain, kembali ke layar login.
+    // Jika hanya offline/gagal terhubung, tetap login.
+    call({ action: 'login' }).then(r => {
+      if (r && r.ok === false) { try { localStorage.removeItem('cred'); } catch (e) {} location.reload(); }
+      else if (r && r.ok) { cred.role = r.role; }
+    }).catch(() => {});
+  }
+} catch (e) {}
 
 /* Tab */
 function tab(t) {
@@ -400,7 +411,7 @@ const BAD_NAME = 'Username 3-20 karakter: huruf kecil, angka, titik, atau garis 
 let admTarget = null;
 function applyCred(nu, np) {
   if (nu) cred.u = nu; if (np) cred.p = np;
-  sessionStorage.setItem('cred', JSON.stringify(cred));
+  try { localStorage.setItem('cred', JSON.stringify(cred)); } catch (e) {}
   try { if (localStorage.getItem('vsu')) localStorage.setItem('vsu', cred.u); } catch (e) {}
 }
 function openSet() {
